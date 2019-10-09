@@ -20,7 +20,9 @@ type ApplicationSpec struct {
 // ApplicationStatus defines the observed state of Application
 // +k8s:openapi-gen=true
 type ApplicationStatus struct {
-	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
+	ConfigMapName  string `json:"configmap_name,omitempty"`
+	DeploymentName string `json:"deployment_name,omitempty"`
+
 	// Important: Run "operator-sdk generate k8s" to regenerate code after modifying this file
 	// Add custom validation using kubebuilder tags: https://book-v1.book.kubebuilder.io/beyond_basics/generating_crd.html
 }

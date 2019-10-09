@@ -10,4 +10,4 @@ spec:
       ports:
       - containerPort: 80
   config:
-    DATABASE_URL: postgres://localhost:5432/my-test-database
+    DATABASE_URL: postgres://localhost:5432/test-database

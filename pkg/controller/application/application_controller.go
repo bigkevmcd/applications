@@ -3,7 +3,7 @@ package application
 import (
 	"context"
 
-	"github.com/go-logr/logr"
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -16,6 +16,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 	"sigs.k8s.io/controller-runtime/pkg/source"
+
+	"github.com/go-logr/logr"
 
 	appv1alpha1 "github.com/bigkevmcd/applications/pkg/apis/app/v1alpha1"
 )
@@ -66,9 +68,6 @@ type ReconcileApplication struct {
 
 // Reconcile reads that state of the cluster for a Application object and makes
 // changes based on the state read and what is in the Application.Spec.
-// Note:
-// The Controller will requeue the Request to be processed again if the returned error is non-nil or
-// Result.Requeue is true, otherwise upon completion it will remove the work from the queue.
 func (r *ReconcileApplication) Reconcile(request reconcile.Request) (reconcile.Result, error) {
 	reqLogger := log.WithValues("Request.Namespace", request.Namespace, "Request.Name", request.Name)
 	reqLogger.Info("Reconciling Application")
@@ -84,21 +83,36 @@ func (r *ReconcileApplication) Reconcile(request reconcile.Request) (reconcile.R
 	}
 
 	err = r.createOrUpdateConfigMap(application, reqLogger)
+	if err != nil {
+		return reconcile.Result{}, err
+	}
+
+	err = r.createOrUpdateDeployment(application, reqLogger)
+	if err != nil {
+		return reconcile.Result{}, err
+	}
+
+	err = r.client.Status().Update(context.TODO(), application)
 	return reconcile.Result{}, err
 }
 
 func (r *ReconcileApplication) createOrUpdateConfigMap(a *appv1alpha1.Application, logger logr.Logger) error {
-	configMap := newConfigMapForCR(a)
+	configMap := configMapFromApplication(a)
 	err := controllerutil.SetControllerReference(a, configMap, r.scheme)
 	if err != nil {
 		return err
 	}
-	// Check if this ConfigMap already exists
+
 	found := &corev1.ConfigMap{}
 	err = r.client.Get(context.TODO(), types.NamespacedName{Name: configMap.Name, Namespace: configMap.Namespace}, found)
 	if err != nil && errors.IsNotFound(err) {
 		logger.Info("Creating a new ConfigMap", "Created.Namespace", configMap.Namespace, "Created.Name", configMap.Name)
-		return r.client.Create(context.TODO(), configMap)
+		err = r.client.Create(context.TODO(), configMap)
+		a.Status.ConfigMapName = configMap.Name
+		if err != nil {
+			return err
+		}
+		return nil
 	} else if err != nil {
 		return err
 	}
@@ -109,5 +123,34 @@ func (r *ReconcileApplication) createOrUpdateConfigMap(a *appv1alpha1.Applicatio
 	if err != nil {
 		return err
 	}
+	a.Status.ConfigMapName = configMap.Name
+	return nil
+}
+
+func (r *ReconcileApplication) createOrUpdateDeployment(a *appv1alpha1.Application, logger logr.Logger) error {
+	deployment := deploymentFromApplication(a)
+	err := controllerutil.SetControllerReference(a, deployment, r.scheme)
+	if err != nil {
+		return err
+	}
+
+	found := &appsv1.Deployment{}
+	err = r.client.Get(context.TODO(), types.NamespacedName{Name: deployment.Name, Namespace: deployment.Namespace}, found)
+	if err != nil && errors.IsNotFound(err) {
+		logger.Info("Creating a new Deployment", "Created.Namespace", deployment.Namespace, "Created.Name", deployment.Name)
+		err = r.client.Create(context.TODO(), deployment)
+		a.Status.DeploymentName = deployment.Name
+		return err
+	} else if err != nil {
+		return err
+	}
+
+	logger.Info("Updating existing Deployment", "Updated.Namespace", deployment.Namespace, "Updated.Name", deployment.Name)
+	found.Spec.Replicas = deployment.Spec.Replicas
+	err = r.client.Update(context.TODO(), found)
+	if err != nil {
+		return err
+	}
+	a.Status.ConfigMapName = deployment.Name
 	return nil
 }
