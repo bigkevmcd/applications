@@ -97,13 +97,17 @@ func (r *ReconcileApplication) createOrUpdateConfigMap(a *appv1alpha1.Applicatio
 	found := &corev1.ConfigMap{}
 	err = r.client.Get(context.TODO(), types.NamespacedName{Name: configMap.Name, Namespace: configMap.Namespace}, found)
 	if err != nil && errors.IsNotFound(err) {
-		logger.Info("Creating a new ConfigMap", "Namespace", configMap.Namespace, "Name", configMap.Name)
+		logger.Info("Creating a new ConfigMap", "Created.Namespace", configMap.Namespace, "Created.Name", configMap.Name)
 		return r.client.Create(context.TODO(), configMap)
 	} else if err != nil {
 		return err
 	}
 
-	// ConfigMap already exists - don't requeue
-	logger.Info("Skip reconcile: ConfigMap already exists", "Namespace", found.Namespace, "Name", found.Name)
+	logger.Info("Updating existing ConfigMap", "Updated.Namespace", configMap.Namespace, "Updated.Name", configMap.Name)
+	found.Data = configMap.Data
+	err = r.client.Update(context.TODO(), found)
+	if err != nil {
+		return err
+	}
 	return nil
 }

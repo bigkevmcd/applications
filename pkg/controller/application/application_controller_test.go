@@ -27,7 +27,7 @@ var (
 	testConfig = map[string]string{"testing": "value"}
 )
 
-func TestCreateUnknownApplication(t *testing.T) {
+func TestCreateUnknownApplicationConfiguration(t *testing.T) {
 	r, cl := createApplicationReconciler(t, makeApplication())
 	req := makeRequest()
 
@@ -38,22 +38,20 @@ func TestCreateUnknownApplication(t *testing.T) {
 		t.Fatalf("res.Requeue got %v, wanted %v", res.Requeue, false)
 	}
 
-	cm := &corev1.ConfigMap{}
-	err = cl.Get(context.TODO(), types.NamespacedName{Name: appName + "-config", Namespace: namespace}, cm)
-	if err != nil {
-		t.Fatalf("failed to get created config-map: %s", err)
-	}
-	if !reflect.DeepEqual(cm.Data, testConfig) {
-		t.Fatalf("got %#v, wanted %#v", cm.Data, testConfig)
-	}
+	assertConfigMapHasData(t, appName, namespace, cl, testConfig)
 }
 
-func TestCreateUnknownApplicationWithError(t *testing.T) {
-	t.Skip()
-}
+func TestUpdateExistingApplicationConfiguration(t *testing.T) {
+	app := makeApplication()
+	newConfig := map[string]string{"new": "value"}
+	app.Spec.Config = newConfig
+	r, cl := createApplicationReconciler(t, app, newConfigMapForCR(makeApplication()))
+	req := makeRequest()
 
-func TestUpdateExistingApplication(t *testing.T) {
-	t.Skip()
+	_, err := r.Reconcile(req)
+
+	fatalIfError(t, "failed to reconcile", err)
+	assertConfigMapHasData(t, appName, namespace, cl, newConfig)
 }
 
 func createApplicationReconciler(t *testing.T, obj ...runtime.Object) (ReconcileApplication, client.Client) {
@@ -98,7 +96,18 @@ func makeApplication() *api.Application {
 			Namespace: namespace,
 		},
 		Spec: api.ApplicationSpec{
-			Config: map[string]string{"testing": "value"},
+			Config: testConfig,
 		},
+	}
+}
+
+func assertConfigMapHasData(t *testing.T, name, namespace string, cl client.Client, data map[string]string) {
+	cm := &corev1.ConfigMap{}
+	err := cl.Get(context.TODO(), types.NamespacedName{Name: name + "-config", Namespace: namespace}, cm)
+	if err != nil {
+		t.Fatalf("failed to get created config-map: %s", err)
+	}
+	if !reflect.DeepEqual(cm.Data, data) {
+		t.Fatalf("got %#v, wanted %#v", cm.Data, data)
 	}
 }
