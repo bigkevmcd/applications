@@ -3,5 +3,11 @@ kind: Application
 metadata:
   name: example-application
 spec:
-  # Add fields here
-  size: 3
+  replicas: 3
+  containers:
+    - name: nginx
+      image: nginx:1.7.9
+      ports:
+      - containerPort: 80
+  config:
+    DATABASE_URL: postgres://localhost:5432/my-test-database

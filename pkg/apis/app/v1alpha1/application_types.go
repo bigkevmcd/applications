@@ -1,13 +1,17 @@
 package v1alpha1
 
 import (
+	"k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 // ApplicationSpec defines the desired state of Application
 // +k8s:openapi-gen=true
 type ApplicationSpec struct {
-	Replicas int32 `json:"replicas"`
+	Labels     map[string]string `json:"labels,omitempty"`
+	Containers []*v1.Container   `json:"containers"`
+	Config     map[string]string `json:"config,omitempty"`
+	Replicas   int32             `json:"replicas"`
 
 	// Important: Run "operator-sdk generate k8s" to regenerate code after modifying this file
 	// Add custom validation using kubebuilder tags: https://book-v1.book.kubebuilder.io/beyond_basics/generating_crd.html
