@@ -58,15 +58,9 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 	return nil
 }
 
-type kubeClient interface {
-	Get(ctx context.Context, key client.ObjectKey, obj runtime.Object) error
-	Create(ctx context.Context, obj runtime.Object) error
-}
-
 // ReconcileApplication reconciles an Application object.
 type ReconcileApplication struct {
-	//	client client.Client
-	client kubeClient
+	client client.Client
 	scheme *runtime.Scheme
 }
 
@@ -81,14 +75,11 @@ func (r *ReconcileApplication) Reconcile(request reconcile.Request) (reconcile.R
 
 	application := &appv1alpha1.Application{}
 	err := r.client.Get(context.TODO(), request.NamespacedName, application)
+
 	if err != nil {
 		if errors.IsNotFound(err) {
-			// Request object not found, could have been deleted after reconcile request.
-			// Owned objects are automatically garbage collected. For additional cleanup logic use finalizers.
-			// Return and don't requeue
 			return reconcile.Result{}, nil
 		}
-		// Error reading the object - requeue the request.
 		return reconcile.Result{}, err
 	}
 
@@ -107,11 +98,7 @@ func (r *ReconcileApplication) createOrUpdateConfigMap(a *appv1alpha1.Applicatio
 	err = r.client.Get(context.TODO(), types.NamespacedName{Name: configMap.Name, Namespace: configMap.Namespace}, found)
 	if err != nil && errors.IsNotFound(err) {
 		logger.Info("Creating a new ConfigMap", "Namespace", configMap.Namespace, "Name", configMap.Name)
-		err = r.client.Create(context.TODO(), configMap)
-		if err != nil {
-			return err
-		}
-		return nil
+		return r.client.Create(context.TODO(), configMap)
 	} else if err != nil {
 		return err
 	}
