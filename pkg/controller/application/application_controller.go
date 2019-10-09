@@ -3,6 +3,7 @@ package application
 import (
 	"context"
 
+	"github.com/go-logr/logr"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -57,17 +58,20 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 	return nil
 }
 
+type kubeClient interface {
+	Get(ctx context.Context, key client.ObjectKey, obj runtime.Object) error
+	Create(ctx context.Context, obj runtime.Object) error
+}
+
 // ReconcileApplication reconciles an Application object.
 type ReconcileApplication struct {
-	client client.Client
+	//	client client.Client
+	client kubeClient
 	scheme *runtime.Scheme
 }
 
 // Reconcile reads that state of the cluster for a Application object and makes
-// changes based on the state read.
-// and what is in the Application.Spec
-// TODO(user): Modify this Reconcile function to implement your Controller logic.  This example creates
-// a Pod as an example
+// changes based on the state read and what is in the Application.Spec.
 // Note:
 // The Controller will requeue the Request to be processed again if the returned error is non-nil or
 // Result.Requeue is true, otherwise upon completion it will remove the work from the queue.
@@ -88,30 +92,31 @@ func (r *ReconcileApplication) Reconcile(request reconcile.Request) (reconcile.R
 		return reconcile.Result{}, err
 	}
 
-	configMap := newConfigMapForCR(application)
+	err = r.createOrUpdateConfigMap(application, reqLogger)
+	return reconcile.Result{}, err
+}
 
-	// Set Application instance as the owner and controller
-	if err := controllerutil.SetControllerReference(application, application, r.scheme); err != nil {
-		return reconcile.Result{}, err
+func (r *ReconcileApplication) createOrUpdateConfigMap(a *appv1alpha1.Application, logger logr.Logger) error {
+	configMap := newConfigMapForCR(a)
+	err := controllerutil.SetControllerReference(a, configMap, r.scheme)
+	if err != nil {
+		return err
 	}
-
 	// Check if this ConfigMap already exists
 	found := &corev1.ConfigMap{}
 	err = r.client.Get(context.TODO(), types.NamespacedName{Name: configMap.Name, Namespace: configMap.Namespace}, found)
 	if err != nil && errors.IsNotFound(err) {
-		reqLogger.Info("Creating a new ConfigMap", "Namespace", configMap.Namespace, "Name", configMap.Name)
+		logger.Info("Creating a new ConfigMap", "Namespace", configMap.Namespace, "Name", configMap.Name)
 		err = r.client.Create(context.TODO(), configMap)
 		if err != nil {
-			return reconcile.Result{}, err
+			return err
 		}
-
-		// Pod created successfully - don't requeue
-		return reconcile.Result{}, nil
+		return nil
 	} else if err != nil {
-		return reconcile.Result{}, err
+		return err
 	}
 
 	// ConfigMap already exists - don't requeue
-	reqLogger.Info("Skip reconcile: ConfigMap already exists", "Namespace", found.Namespace, "Name", found.Name)
-	return reconcile.Result{}, nil
+	logger.Info("Skip reconcile: ConfigMap already exists", "Namespace", found.Namespace, "Name", found.Name)
+	return nil
 }
