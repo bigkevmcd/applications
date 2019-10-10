@@ -138,8 +138,9 @@ func makeApplication() *api.Application {
 			Namespace: testNamespace,
 		},
 		Spec: api.ApplicationSpec{
-			Config:   testConfig,
-			Replicas: testReplicas,
+			Config:     testConfig,
+			Replicas:   testReplicas,
+			Containers: []corev1.Container{},
 		},
 	}
 }

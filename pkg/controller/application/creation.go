@@ -30,6 +30,19 @@ func deploymentFromApplication(cr *appv1alpha1.Application) *appsv1.Deployment {
 		},
 		Spec: appsv1.DeploymentSpec{
 			Replicas: &cr.Spec.Replicas,
+			Selector: &metav1.LabelSelector{
+				MatchLabels: cr.Spec.Labels,
+			},
+			Template: corev1.PodTemplateSpec{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      cr.Name,
+					Namespace: cr.Namespace,
+					Labels:    cr.Spec.Labels,
+				},
+				Spec: corev1.PodSpec{
+					Containers: cr.Spec.Containers,
+				},
+			},
 		},
 	}
 }

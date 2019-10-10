@@ -82,13 +82,9 @@ func (in *ApplicationSpec) DeepCopyInto(out *ApplicationSpec) {
 	}
 	if in.Containers != nil {
 		in, out := &in.Containers, &out.Containers
-		*out = make([]*v1.Container, len(*in))
+		*out = make([]v1.Container, len(*in))
 		for i := range *in {
-			if (*in)[i] != nil {
-				in, out := &(*in)[i], &(*out)[i]
-				*out = new(v1.Container)
-				(*in).DeepCopyInto(*out)
-			}
+			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
 	}
 	if in.Config != nil {

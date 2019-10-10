@@ -9,7 +9,7 @@ import (
 // +k8s:openapi-gen=true
 type ApplicationSpec struct {
 	Labels     map[string]string `json:"labels,omitempty"`
-	Containers []*v1.Container   `json:"containers"`
+	Containers []v1.Container    `json:"containers,omitempty"`
 	Config     map[string]string `json:"config,omitempty"`
 	Replicas   int32             `json:"replicas"`
 
