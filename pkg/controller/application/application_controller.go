@@ -47,16 +47,9 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 		return err
 	}
 
-	// TODO(user): Modify this to be the types you create that are owned by the primary resource
-	// Watch for changes to secondary resource Pods and requeue the owner Application
-	err = c.Watch(&source.Kind{Type: &corev1.Pod{}}, &handler.EnqueueRequestForOwner{
-		IsController: true,
-		OwnerType:    &appv1alpha1.Application{},
-	})
-	if err != nil {
-		return err
-	}
-
+	// TODO: What should this watch for?
+	// If a user changes the ConfigMap or Deploy (or Service) should this reset
+	// it back?!
 	return nil
 }
 
@@ -92,6 +85,7 @@ func (r *ReconcileApplication) Reconcile(request reconcile.Request) (reconcile.R
 		return reconcile.Result{}, err
 	}
 
+	// TODO: fix this to only update if changes are applied.
 	err = r.client.Status().Update(context.TODO(), application)
 	return reconcile.Result{}, err
 }

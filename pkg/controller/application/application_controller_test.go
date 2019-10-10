@@ -71,6 +71,24 @@ func TestCreateUnknownApplicationDeployment(t *testing.T) {
 	assertDeploymentConfiguration(t, testAppName, testNamespace, cl, testReplicas)
 }
 
+func TestCreateUnknownApplicationService(t *testing.T) {
+	r, cl := createApplicationReconciler(t, makeApplication())
+	req := makeRequest()
+
+	res, err := r.Reconcile(req)
+
+	fatalIfError(t, "failed to reconcile", err)
+	if res.Requeue != false {
+		t.Fatalf("res.Requeue got %v, wanted %v", res.Requeue, false)
+	}
+
+	dp := &corev1.Service{}
+	err = cl.Get(context.TODO(), ns(testAppName, testNamespace), dp)
+	if err != nil {
+		t.Fatalf("failed to get created service: %s", err)
+	}
+}
+
 func TestUpdateExistingConfiguration(t *testing.T) {
 	app := makeApplication()
 	newConfig := map[string]string{"new": "value"}
@@ -105,9 +123,10 @@ func createApplicationReconciler(t *testing.T, obj ...runtime.Object) (Reconcile
 	}, cl
 }
 
+// TODO: Is there a nicer way of registering all types for core and apps?
 func createFakeScheme(t *testing.T, objs ...runtime.Object) *runtime.Scheme {
 	registerObjs := objs
-	registerObjs = append(registerObjs, &corev1.ConfigMap{}, &appsv1.Deployment{})
+	registerObjs = append(registerObjs, &corev1.ConfigMap{}, &appsv1.Deployment{}, &corev1.Service{})
 	api.SchemeBuilder.Register(registerObjs...)
 	scheme, err := api.SchemeBuilder.Build()
 	if err != nil {

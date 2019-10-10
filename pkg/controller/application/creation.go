@@ -14,34 +14,20 @@ import (
 // configMapFromApplication makes a ConfigMap based on the Application.
 func configMapFromApplication(cr *appv1alpha1.Application) *corev1.ConfigMap {
 	return &corev1.ConfigMap{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      cr.Name + "-config",
-			Namespace: cr.Namespace,
-			Labels:    cr.Spec.Labels,
-		},
-		Data: cr.Spec.Config,
+		ObjectMeta: makeObjectMeta(cr.Name+"-config", cr),
+		Data:       cr.Spec.Config,
 	}
 }
 
 // deploymentFromApplication makes a deployment based on the Application.
 func deploymentFromApplication(cr *appv1alpha1.Application) *appsv1.Deployment {
 	return &appsv1.Deployment{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      cr.Name,
-			Namespace: cr.Namespace,
-			Labels:    cr.Spec.Labels,
-		},
+		ObjectMeta: makeObjectMeta(cr.Name, cr),
 		Spec: appsv1.DeploymentSpec{
 			Replicas: &cr.Spec.Replicas,
-			Selector: &metav1.LabelSelector{
-				MatchLabels: cr.Spec.Labels,
-			},
+			Selector: makeLabelSelector(cr),
 			Template: corev1.PodTemplateSpec{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      cr.Name,
-					Namespace: cr.Namespace,
-					Labels:    cr.Spec.Labels,
-				},
+				ObjectMeta: makeObjectMeta(cr.Name, cr),
 				Spec: corev1.PodSpec{
 					Containers: cr.Spec.Containers,
 				},
@@ -53,10 +39,29 @@ func deploymentFromApplication(cr *appv1alpha1.Application) *appsv1.Deployment {
 // serviceFromApplication makes a service based on the Application.
 func serviceFromApplication(cr *appv1alpha1.Application) *corev1.Service {
 	return &corev1.Service{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      cr.Name,
-			Namespace: cr.Namespace,
-			Labels:    cr.Spec.Labels,
+		ObjectMeta: makeObjectMeta(cr.Name, cr),
+		Spec: corev1.ServiceSpec{
+			Selector: cr.Spec.Labels,
+			Ports: []corev1.ServicePort{
+				{
+					Protocol: corev1.ProtocolTCP,
+					Port:     80,
+				},
+			},
 		},
+	}
+}
+
+func makeObjectMeta(name string, cr *appv1alpha1.Application) metav1.ObjectMeta {
+	return metav1.ObjectMeta{
+		Name:      name,
+		Namespace: cr.Namespace,
+		Labels:    cr.Spec.Labels,
+	}
+}
+
+func makeLabelSelector(cr *appv1alpha1.Application) *metav1.LabelSelector {
+	return &metav1.LabelSelector{
+		MatchLabels: cr.Spec.Labels,
 	}
 }
