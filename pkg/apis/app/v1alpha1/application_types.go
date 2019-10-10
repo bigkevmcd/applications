@@ -11,7 +11,8 @@ type ApplicationSpec struct {
 	Labels     map[string]string `json:"labels,omitempty"`
 	Containers []v1.Container    `json:"containers,omitempty"`
 	Config     map[string]string `json:"config,omitempty"`
-	Replicas   int32             `json:"replicas"`
+	// +kubebuilder:validation:Minimum=1
+	Replicas int32 `json:"replicas"`
 
 	// Important: Run "operator-sdk generate k8s" to regenerate code after modifying this file
 	// Add custom validation using kubebuilder tags: https://book-v1.book.kubebuilder.io/beyond_basics/generating_crd.html
@@ -22,6 +23,7 @@ type ApplicationSpec struct {
 type ApplicationStatus struct {
 	ConfigMapName  string `json:"configmap_name,omitempty"`
 	DeploymentName string `json:"deployment_name,omitempty"`
+	ServiceName    string `json:"service_name,omitempty"`
 
 	// Important: Run "operator-sdk generate k8s" to regenerate code after modifying this file
 	// Add custom validation using kubebuilder tags: https://book-v1.book.kubebuilder.io/beyond_basics/generating_crd.html

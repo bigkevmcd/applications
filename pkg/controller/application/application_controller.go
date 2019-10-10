@@ -85,8 +85,11 @@ func (r *ReconcileApplication) Reconcile(request reconcile.Request) (reconcile.R
 		return reconcile.Result{}, err
 	}
 
-	// TODO: fix this to only update if changes are applied.
-	err = r.client.Status().Update(context.TODO(), application)
+	err = r.createOrUpdateService(application, reqLogger)
+	if err != nil {
+		return reconcile.Result{}, err
+	}
+
 	return reconcile.Result{}, err
 }
 
@@ -102,11 +105,11 @@ func (r *ReconcileApplication) createOrUpdateConfigMap(a *appv1alpha1.Applicatio
 	if err != nil && errors.IsNotFound(err) {
 		logger.Info("Creating a new ConfigMap", "Created.Namespace", configMap.Namespace, "Created.Name", configMap.Name)
 		err = r.client.Create(context.TODO(), configMap)
-		a.Status.ConfigMapName = configMap.Name
 		if err != nil {
 			return err
 		}
-		return nil
+		a.Status.ConfigMapName = configMap.Name
+		return r.client.Status().Update(context.TODO(), a)
 	} else if err != nil {
 		return err
 	}
@@ -118,7 +121,7 @@ func (r *ReconcileApplication) createOrUpdateConfigMap(a *appv1alpha1.Applicatio
 		return err
 	}
 	a.Status.ConfigMapName = configMap.Name
-	return nil
+	return r.client.Status().Update(context.TODO(), a)
 }
 
 func (r *ReconcileApplication) createOrUpdateDeployment(a *appv1alpha1.Application, logger logr.Logger) error {
@@ -133,18 +136,52 @@ func (r *ReconcileApplication) createOrUpdateDeployment(a *appv1alpha1.Applicati
 	if err != nil && errors.IsNotFound(err) {
 		logger.Info("Creating a new Deployment", "Created.Namespace", deployment.Namespace, "Created.Name", deployment.Name)
 		err = r.client.Create(context.TODO(), deployment)
+		if err != nil {
+			return err
+		}
 		a.Status.DeploymentName = deployment.Name
-		return err
+		return r.client.Status().Update(context.TODO(), a)
 	} else if err != nil {
 		return err
 	}
 
 	logger.Info("Updating existing Deployment", "Updated.Namespace", deployment.Namespace, "Updated.Name", deployment.Name)
-	found.Spec.Replicas = deployment.Spec.Replicas
+	found.Spec = deployment.Spec
 	err = r.client.Update(context.TODO(), found)
 	if err != nil {
 		return err
 	}
 	a.Status.ConfigMapName = deployment.Name
-	return nil
+	return r.client.Status().Update(context.TODO(), a)
+}
+
+func (r *ReconcileApplication) createOrUpdateService(a *appv1alpha1.Application, logger logr.Logger) error {
+	service := serviceFromApplication(a)
+	err := controllerutil.SetControllerReference(a, service, r.scheme)
+	if err != nil {
+		return err
+	}
+
+	found := &corev1.Service{}
+	err = r.client.Get(context.TODO(), types.NamespacedName{Name: service.Name, Namespace: service.Namespace}, found)
+	if err != nil && errors.IsNotFound(err) {
+		logger.Info("Creating a new Service", "Created.Namespace", service.Namespace, "Created.Name", service.Name)
+		err = r.client.Create(context.TODO(), service)
+		if err != nil {
+			return err
+		}
+		a.Status.ServiceName = service.Name
+		return r.client.Status().Update(context.TODO(), a)
+	} else if err != nil {
+		return err
+	}
+
+	logger.Info("Updating existing Service", "Updated.Namespace", service.Namespace, "Updated.Name", service.Name)
+	found.Spec = service.Spec
+	err = r.client.Update(context.TODO(), found)
+	if err != nil {
+		return err
+	}
+	a.Status.ServiceName = service.Name
+	return r.client.Status().Update(context.TODO(), a)
 }

@@ -92,4 +92,7 @@ func TestServiceFromApplication(t *testing.T) {
 	if !reflect.DeepEqual(svc.Spec.Selector, testLabels) {
 		t.Fatalf("Service got selector %#v, wanted %#v", svc.Spec.Selector, testLabels)
 	}
+	if svc.Spec.Type != corev1.ServiceTypeNodePort {
+		t.Fatalf("Service got type %s, wanted %s", svc.Spec.Type, corev1.ServiceTypeNodePort)
+	}
 }

@@ -2,6 +2,8 @@
 
 Simple Applications CRD for Kubernetes.
 
+THIS IS NOT FOR PRODUCTION USE - THIS IS JUST AN EXPERIMENT!
+
 ## Installation
 
 ```console

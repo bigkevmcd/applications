@@ -37,10 +37,12 @@ func deploymentFromApplication(cr *appv1alpha1.Application) *appsv1.Deployment {
 }
 
 // serviceFromApplication makes a service based on the Application.
+// TODO: What to do about configuring the service type, port and protocol?
 func serviceFromApplication(cr *appv1alpha1.Application) *corev1.Service {
 	return &corev1.Service{
 		ObjectMeta: makeObjectMeta(cr.Name, cr),
 		Spec: corev1.ServiceSpec{
+			Type:     corev1.ServiceTypeNodePort,
 			Selector: cr.Spec.Labels,
 			Ports: []corev1.ServicePort{
 				{
