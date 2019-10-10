@@ -69,3 +69,13 @@ func TestDeploymentFromApplication(t *testing.T) {
 	}
 
 }
+
+func TestServiceFromApplication(t *testing.T) {
+	a := &appv1alpha1.Application{
+		Spec: appv1alpha1.ApplicationSpec{
+			Labels: testLabels,
+		},
+	}
+
+	_ = serviceFromApplication(a)
+}

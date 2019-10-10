@@ -8,7 +8,10 @@ import (
 	appv1alpha1 "github.com/bigkevmcd/applications/pkg/apis/app/v1alpha1"
 )
 
-// configMapFromApplication returns ConfigMap for the application.
+// TODO: What should this do if we get no labels, autogenerate them based on
+// the Name?
+
+// configMapFromApplication makes a ConfigMap based on the Application.
 func configMapFromApplication(cr *appv1alpha1.Application) *corev1.ConfigMap {
 	return &corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
@@ -20,7 +23,7 @@ func configMapFromApplication(cr *appv1alpha1.Application) *corev1.ConfigMap {
 	}
 }
 
-// DeploymentFromApplication returns Deployment for the application.
+// deploymentFromApplication makes a deployment based on the Application.
 func deploymentFromApplication(cr *appv1alpha1.Application) *appsv1.Deployment {
 	return &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
@@ -43,6 +46,17 @@ func deploymentFromApplication(cr *appv1alpha1.Application) *appsv1.Deployment {
 					Containers: cr.Spec.Containers,
 				},
 			},
+		},
+	}
+}
+
+// serviceFromApplication makes a service based on the Application.
+func serviceFromApplication(cr *appv1alpha1.Application) *corev1.Service {
+	return &corev1.Service{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      cr.Name,
+			Namespace: cr.Namespace,
+			Labels:    cr.Spec.Labels,
 		},
 	}
 }
