@@ -47,9 +47,17 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 		return err
 	}
 
-	// TODO: What should this watch for?
-	// If a user changes the ConfigMap or Deploy (or Service) should this reset
-	// it back?!
+	// TODO: find out how to test this.
+	watchedTypes := []runtime.Object{&corev1.ConfigMap{}, &appsv1.Deployment{}, &corev1.Service{}}
+	for _, t := range watchedTypes {
+		err = c.Watch(&source.Kind{Type: t}, &handler.EnqueueRequestForOwner{
+			IsController: true,
+			OwnerType:    &appv1alpha1.Application{},
+		})
+		if err != nil {
+			return err
+		}
+	}
 	return nil
 }
 
