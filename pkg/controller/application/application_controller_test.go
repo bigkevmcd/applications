@@ -7,7 +7,6 @@ import (
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -25,12 +24,8 @@ const (
 	testReplicas  = 5
 )
 
-var (
-	testConfig = map[string]string{"testing": "value"}
-)
-
 func TestCreateUnknownApplicationConfiguration(t *testing.T) {
-	r, cl := createApplicationReconciler(t, makeApplication())
+	r, cl := createApplicationReconciler(t, makeTestApplication())
 	req := makeRequest()
 
 	res, err := r.Reconcile(req)
@@ -49,11 +44,11 @@ func TestCreateUnknownApplicationConfiguration(t *testing.T) {
 		t.Fatalf("got %s, wanted %v", app.Status, wanted)
 	}
 
-	assertConfigMapHasData(t, testAppName, testNamespace, cl, testConfig)
+	assertConfigMapHasData(t, testAppName, testNamespace, cl, testEnvironment)
 }
 
 func TestCreateUnknownApplicationDeployment(t *testing.T) {
-	r, cl := createApplicationReconciler(t, makeApplication())
+	r, cl := createApplicationReconciler(t, makeTestApplication())
 	req := makeRequest()
 
 	res, err := r.Reconcile(req)
@@ -72,7 +67,7 @@ func TestCreateUnknownApplicationDeployment(t *testing.T) {
 }
 
 func TestCreateUnknownApplicationService(t *testing.T) {
-	r, cl := createApplicationReconciler(t, makeApplication())
+	r, cl := createApplicationReconciler(t, makeTestApplication())
 	req := makeRequest()
 
 	res, err := r.Reconcile(req)
@@ -90,22 +85,22 @@ func TestCreateUnknownApplicationService(t *testing.T) {
 }
 
 func TestUpdateExistingConfiguration(t *testing.T) {
-	app := makeApplication()
-	newConfig := map[string]string{"new": "value"}
-	app.Spec.Config = newConfig
-	r, cl := createApplicationReconciler(t, app, configMapFromApplication(makeApplication()))
+	app := makeTestApplication()
+	newEnvironment := map[string]string{"new": "value"}
+	app.Spec.Environment = newEnvironment
+	r, cl := createApplicationReconciler(t, app, configMapFromApplication(makeTestApplication()))
 	req := makeRequest()
 
 	_, err := r.Reconcile(req)
 
 	fatalIfError(t, "failed to reconcile", err)
-	assertConfigMapHasData(t, testAppName, testNamespace, cl, newConfig)
+	assertConfigMapHasData(t, testAppName, testNamespace, cl, newEnvironment)
 }
 
 func TestUpdateExistingDeployment(t *testing.T) {
-	app := makeApplication()
-	app.Spec.Replicas = 2
-	r, cl := createApplicationReconciler(t, app, deploymentFromApplication(makeApplication()))
+	app := makeTestApplication()
+	app.Spec.Processes[0].Replicas = 2
+	r, cl := createApplicationReconciler(t, app, deploymentFromApplication(makeTestApplication()))
 	req := makeRequest()
 
 	_, err := r.Reconcile(req)
@@ -150,25 +145,12 @@ func makeRequest() reconcile.Request {
 	}
 }
 
-func makeApplication() *api.Application {
-	return &api.Application{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      testAppName,
-			Namespace: testNamespace,
-		},
-		Spec: api.ApplicationSpec{
-			Config:     testConfig,
-			Replicas:   testReplicas,
-			Containers: []corev1.Container{},
-		},
-	}
-}
-
 func ns(name, namespace string) types.NamespacedName {
 	return types.NamespacedName{Name: name, Namespace: namespace}
 }
 
 func assertConfigMapHasData(t *testing.T, name, namespace string, cl client.Client, data map[string]string) {
+	t.Helper()
 	cm := &corev1.ConfigMap{}
 	err := cl.Get(context.TODO(), ns(name+"-config", namespace), cm)
 	if err != nil {
@@ -180,6 +162,7 @@ func assertConfigMapHasData(t *testing.T, name, namespace string, cl client.Clie
 }
 
 func assertDeploymentConfiguration(t *testing.T, name, namespace string, cl client.Client, r int32) {
+	t.Helper()
 	d := &appsv1.Deployment{}
 	err := cl.Get(context.TODO(), ns(name, namespace), d)
 	if err != nil {

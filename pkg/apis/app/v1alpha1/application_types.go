@@ -1,21 +1,30 @@
 package v1alpha1
 
 import (
-	"k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 // ApplicationSpec defines the desired state of Application
 // +k8s:openapi-gen=true
 type ApplicationSpec struct {
-	Labels     map[string]string `json:"labels,omitempty"`
-	Containers []v1.Container    `json:"containers,omitempty"`
-	Config     map[string]string `json:"config,omitempty"`
-	// +kubebuilder:validation:Minimum=1
-	Replicas int32 `json:"replicas"`
+	Environment map[string]string `json:"environment,omitempty"`
+
+	// +kubebuilder:validation:MinItems=1
+	Processes []ProcessSpec `json:"processes,omitempty"`
 
 	// Important: Run "operator-sdk generate k8s" to regenerate code after modifying this file
 	// Add custom validation using kubebuilder tags: https://book-v1.book.kubebuilder.io/beyond_basics/generating_crd.html
+}
+
+// ProcessSpec defines the state for a process.
+// +k8s:openapi-gen=true
+type ProcessSpec struct {
+	Name string `json:"name,omitempty"`
+	// +kubebuilder:validation:Pattern=.+:.+
+	Image string `json:"image,omitempty"`
+	Port  int32  `json:"port"`
+	// +kubebuilder:validation:Minimum=1
+	Replicas int32 `json:"replicas"`
 }
 
 // ApplicationStatus defines the observed state of Application

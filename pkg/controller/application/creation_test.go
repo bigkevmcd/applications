@@ -4,53 +4,95 @@ import (
 	"reflect"
 	"testing"
 
-	appv1alpha1 "github.com/bigkevmcd/applications/pkg/apis/app/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	appv1alpha1 "github.com/bigkevmcd/applications/pkg/apis/app/v1alpha1"
 )
 
-var testLabels = map[string]string{"app": "my-test-app", "component": "testing"}
+var (
+	testLabels      = map[string]string{"app": testAppName}
+	testEnvironment = map[string]string{"TEST_MODE": "true"}
+	testImage       = "test-image:latest"
+	testProcess     = appv1alpha1.ProcessSpec{
+		Name:     "web",
+		Replicas: 5,
+		Image:    testImage,
+		Port:     80,
+	}
+)
 
 func TestConfigMapFromApplication(t *testing.T) {
-	config := map[string]string{"testing.value": "42"}
-	a := &appv1alpha1.Application{
-		Spec: appv1alpha1.ApplicationSpec{
-			Labels: testLabels,
-			Config: config,
-		},
-	}
+	app := makeTestApplication()
 
-	cm := configMapFromApplication(a)
+	cm := configMapFromApplication(app)
 
-	if !reflect.DeepEqual(cm.Data, config) {
-		t.Fatalf("ConfigMap got data %#v, wanted %#v", cm.Data, config)
+	if !reflect.DeepEqual(cm.Data, testEnvironment) {
+		t.Fatalf("ConfigMap got data %#v, wanted %#v", cm.Data, testEnvironment)
 	}
 	if !reflect.DeepEqual(cm.Labels, testLabels) {
 		t.Fatalf("ConfigMap got labels %#v, wanted %#v", cm.Labels, testLabels)
 	}
 }
 
-func TestDeploymentFromApplication(t *testing.T) {
-	containers := []corev1.Container{
-		{
-			Name:  "nginx",
-			Image: "nginx:1.17.4",
-			Ports: []corev1.ContainerPort{
-				{
-					ContainerPort: 80,
+func TestMakeEnvFromApp(t *testing.T) {
+	testMode := "TEST_MODE"
+	app := makeTestApplication()
+
+	env := makeEnvFromApp(app)
+
+	if l := len(env); l != 1 {
+		t.Fatalf("makeEnvFromApp() got %d vars, wanted 1", l)
+	}
+	v := env[0]
+
+	wanted := corev1.EnvVar{
+		Name: testMode,
+		ValueFrom: &corev1.EnvVarSource{
+			ConfigMapKeyRef: &corev1.ConfigMapKeySelector{
+				LocalObjectReference: corev1.LocalObjectReference{
+					Name: configMapNameForApp(app),
 				},
+				Key: "TEST_MODE",
 			},
 		},
 	}
-
-	a := &appv1alpha1.Application{
-		Spec: appv1alpha1.ApplicationSpec{
-			Labels:     testLabels,
-			Replicas:   5,
-			Containers: containers,
-		},
+	if !reflect.DeepEqual(v, wanted) {
+		t.Fatalf("makeEnvFromApp() got %#v, wanted %#v", v, wanted)
 	}
 
-	dp := deploymentFromApplication(a)
+}
+
+func TestMakePodSpec(t *testing.T) {
+	app := makeTestApplication()
+
+	s := makePodSpec(app, testProcess)
+
+	wanted := corev1.PodSpec{
+		Containers: []corev1.Container{
+			{
+				Name:  app.ObjectMeta.Name + "-" + "web",
+				Image: testImage,
+				Env:   makeEnvFromApp(app),
+			},
+		},
+	}
+	if !reflect.DeepEqual(s, wanted) {
+		t.Fatalf("makePodSpec() got %#v, wanted %#v", s, wanted)
+	}
+}
+
+func TestDeploymentFromApplication(t *testing.T) {
+	process := appv1alpha1.ProcessSpec{
+		Name:     "web",
+		Replicas: 5,
+		Image:    testImage,
+		Port:     80,
+	}
+	app := makeTestApplication()
+	app.Spec.Processes = []appv1alpha1.ProcessSpec{process}
+
+	dp := deploymentFromApplication(app)
 
 	if *dp.Spec.Replicas != 5 {
 		t.Fatalf("Deployment got %d Replicas, wanted 5", *dp.Spec.Replicas)
@@ -61,8 +103,17 @@ func TestDeploymentFromApplication(t *testing.T) {
 	if !reflect.DeepEqual(dp.Labels, testLabels) {
 		t.Fatalf("Deployment got labels %#v, wanted %#v", dp.Labels, testLabels)
 	}
-	if !reflect.DeepEqual(dp.Spec.Template.Spec.Containers, containers) {
-		t.Fatalf("Deployment got containers %#v, wanted %#v", dp.Spec.Template.Spec.Containers, containers)
+	if l := len(dp.Spec.Template.Spec.Containers); l != 1 {
+		t.Fatalf("Deployment got %d containers, wanted 1", l)
+	}
+
+	wantedContainer := corev1.Container{
+		Name:  app.ObjectMeta.Name + "-web",
+		Image: testImage,
+		Env:   makeEnvFromApp(app),
+	}
+	if !reflect.DeepEqual(dp.Spec.Template.Spec.Containers[0], wantedContainer) {
+		t.Fatalf("Deployment got containers %#v, wanted %#v", dp.Spec.Template.Spec.Containers[0], wantedContainer)
 	}
 	if !reflect.DeepEqual(dp.Spec.Template.ObjectMeta.Labels, testLabels) {
 		t.Fatalf("Deployment got deployment labels %#v, wanted %#v", dp.Spec.Template.ObjectMeta.Labels, testLabels)
@@ -71,13 +122,9 @@ func TestDeploymentFromApplication(t *testing.T) {
 }
 
 func TestServiceFromApplication(t *testing.T) {
-	a := &appv1alpha1.Application{
-		Spec: appv1alpha1.ApplicationSpec{
-			Labels: testLabels,
-		},
-	}
+	app := makeTestApplication()
 
-	svc := serviceFromApplication(a)
+	svc := serviceFromApplication(app)
 
 	wanted := []corev1.ServicePort{
 		{
@@ -94,5 +141,18 @@ func TestServiceFromApplication(t *testing.T) {
 	}
 	if svc.Spec.Type != corev1.ServiceTypeNodePort {
 		t.Fatalf("Service got type %s, wanted %s", svc.Spec.Type, corev1.ServiceTypeNodePort)
+	}
+}
+
+func makeTestApplication() *appv1alpha1.Application {
+	return &appv1alpha1.Application{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      testAppName,
+			Namespace: testNamespace,
+		},
+		Spec: appv1alpha1.ApplicationSpec{
+			Environment: testEnvironment,
+			Processes:   []appv1alpha1.ProcessSpec{testProcess},
+		},
 	}
 }

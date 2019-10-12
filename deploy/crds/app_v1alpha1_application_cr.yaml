@@ -3,13 +3,11 @@ kind: Application
 metadata:
   name: example-application
 spec:
-  replicas: 3
-  labels:
-    service: my-test-service
-  containers:
-    - name: nginx
+  name: example-application
+  processes:
+    - name: web
       image: nginx:1.17.4
-      ports:
-      - containerPort: 80
-  config:
+      port: 80
+      replicas: 2
+  environment:
     DATABASE_URL: postgres://localhost:5432/test-database
