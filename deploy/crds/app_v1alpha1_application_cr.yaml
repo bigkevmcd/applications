@@ -3,7 +3,6 @@ kind: Application
 metadata:
   name: example-application
 spec:
-  name: example-application
   processes:
     - name: web
       image: nginx:1.17.4
