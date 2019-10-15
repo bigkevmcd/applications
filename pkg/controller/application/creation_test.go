@@ -11,7 +11,7 @@ import (
 )
 
 var (
-	testLabels      = map[string]string{"app": testAppName}
+	testLabels      = map[string]string{"app.kubernetes.io/name": testAppName}
 	testEnvironment = map[string]string{"TEST_MODE": "true"}
 	testImage       = "test-image:latest"
 	testProcess     = appv1alpha1.ProcessSpec{

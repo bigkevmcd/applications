@@ -66,7 +66,7 @@ func makeLabelSelector(app *appv1alpha1.Application) *metav1.LabelSelector {
 }
 
 func labelsForApp(app *appv1alpha1.Application) map[string]string {
-	return map[string]string{"app": app.ObjectMeta.Name}
+	return map[string]string{"app.kubernetes.io/name": app.ObjectMeta.Name}
 }
 
 func makePodSpec(app *appv1alpha1.Application, p appv1alpha1.ProcessSpec) corev1.PodSpec {
