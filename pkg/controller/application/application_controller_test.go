@@ -40,10 +40,6 @@ func TestCreateUnknownApplicationConfiguration(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to get application: %s", err)
 	}
-	if wanted := testAppName + "-config"; wanted != app.Status.ConfigMapName {
-		t.Fatalf("got %s, wanted %v", app.Status, wanted)
-	}
-
 	assertConfigMapHasData(t, testAppName, testNamespace, cl, testEnvironment)
 }
 

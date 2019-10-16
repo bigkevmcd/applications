@@ -116,8 +116,7 @@ func (r *ReconcileApplication) createOrUpdateConfigMap(a *appv1alpha1.Applicatio
 		if err != nil {
 			return err
 		}
-		a.Status.ConfigMapName = configMap.Name
-		return r.client.Status().Update(context.TODO(), a)
+		return r.client.Status().Update(context.TODO(), configMap)
 	} else if err != nil {
 		return err
 	}
@@ -128,8 +127,7 @@ func (r *ReconcileApplication) createOrUpdateConfigMap(a *appv1alpha1.Applicatio
 	if err != nil {
 		return err
 	}
-	a.Status.ConfigMapName = configMap.Name
-	return r.client.Status().Update(context.TODO(), a)
+	return r.client.Status().Update(context.TODO(), configMap)
 }
 
 func (r *ReconcileApplication) createOrUpdateDeployment(a *appv1alpha1.Application, logger logr.Logger) error {
@@ -147,8 +145,7 @@ func (r *ReconcileApplication) createOrUpdateDeployment(a *appv1alpha1.Applicati
 		if err != nil {
 			return err
 		}
-		a.Status.DeploymentName = deployment.Name
-		return r.client.Status().Update(context.TODO(), a)
+		return r.client.Status().Update(context.TODO(), deployment)
 	} else if err != nil {
 		return err
 	}
@@ -159,8 +156,7 @@ func (r *ReconcileApplication) createOrUpdateDeployment(a *appv1alpha1.Applicati
 	if err != nil {
 		return err
 	}
-	a.Status.ConfigMapName = deployment.Name
-	return r.client.Status().Update(context.TODO(), a)
+	return r.client.Status().Update(context.TODO(), deployment)
 }
 
 func (r *ReconcileApplication) createOrUpdateService(a *appv1alpha1.Application, logger logr.Logger) error {
@@ -178,8 +174,7 @@ func (r *ReconcileApplication) createOrUpdateService(a *appv1alpha1.Application,
 		if err != nil {
 			return err
 		}
-		a.Status.ServiceName = service.Name
-		return r.client.Status().Update(context.TODO(), a)
+		return r.client.Status().Update(context.TODO(), service)
 	} else if err != nil {
 		return err
 	}
@@ -190,6 +185,5 @@ func (r *ReconcileApplication) createOrUpdateService(a *appv1alpha1.Application,
 	if err != nil {
 		return err
 	}
-	a.Status.ServiceName = service.Name
-	return r.client.Status().Update(context.TODO(), a)
+	return r.client.Status().Update(context.TODO(), service)
 }
